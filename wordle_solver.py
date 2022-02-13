@@ -21,7 +21,7 @@ url = "https://www.nytimes.com/games/wordle/index.html"
 
 # Set to True to open in default chrome profile (requires closing all chrome instances)
 # open_with_chrome_profile = False
-open_with_chrome_profile = True
+open_with_chrome_profile = False
 
 
 # keeps track of letters; DONT CHANGE THESE!!
