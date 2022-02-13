@@ -58,17 +58,6 @@ def get_words(filename):
     return words_list
 
 
-def check_already_won():
-    # Checks if the game was already played/solved 
-    share_button_elem = ""
-    try:
-        share_button_elem = driver.execute_script(" return document.querySelector('body > game-app').shadowRoot.querySelector('#game > game-modal > game-stats').shadowRoot.querySelector('#share-button') ")
-    except:
-        pass
-    if share_button_elem:
-        return True
-    return False
-
 def map_str_to_dict(word):
     # Maps string to dictionary with index as key and letter as value
     dict = {}
