@@ -1,4 +1,4 @@
-# Wordle-Solver 🎓
+# Wordle Solver 🎓
 
  
 This script automatically solves [Wordle](https://www.nytimes.com/games/wordle/index.html) puzzles usually within 3 or 4 attempts. 
