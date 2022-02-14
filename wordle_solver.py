@@ -53,7 +53,7 @@ def get_words(filename):
 
         words_list = [] 
         for line in data:
-            words_list.append(line.strip("\n"))
+            words_list.append(line.strip("\n").lower())
 
     return words_list
 
@@ -259,7 +259,7 @@ def main():
     status = False
     attempt = 1
 
-    word_dict = map_str_to_dict(first_word)
+    word_dict = map_str_to_dict(first_word.lower())
 
     # Wait until game board is loaded
     try:
