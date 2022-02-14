@@ -101,6 +101,7 @@ def get_tile_status(attempt):
     # create dicts to keep track of positions of letters 
     correct_letters_dict = {}
     present_letters_dict = {}
+    absent_letters_dict = {}
     
     # Get element of last attempted row 
     row_elements = driver.execute_script(f" return document.querySelector('game-app').shadowRoot.querySelector('game-row:nth-child({attempt})').shadowRoot.querySelectorAll('game-tile[letter]') ")
@@ -114,14 +115,11 @@ def get_tile_status(attempt):
         if evaluation == "correct":
             correct_letters_dict[index] = letter
             all_correct_letters_set.add(letter)
-            try:
-                all_absent_letters_set.remove(letter) # in case a word with dupe letters is entered and first is absent but second is correct
-            except KeyError:
-                pass # ignore error of letter not in all_absent_letters_set
         elif evaluation == "present":
             present_letters_dict[index] = letter
             all_present_letters_set.add(letter)
-        elif evaluation == "absent" and not (letter in all_correct_letters_set or letter in all_present_letters_set):
+        elif evaluation == "absent":
+            absent_letters_dict[index] = letter
             all_absent_letters_set.add(letter)
 
 
@@ -130,17 +128,39 @@ def get_tile_status(attempt):
     print("absent  letters:", *all_absent_letters_set)
     print()
 
-    return correct_letters_dict, present_letters_dict, all_absent_letters_set
+    return correct_letters_dict, present_letters_dict, absent_letters_dict
 
 
-def remove_garbage_words(words_list, correct_letters_dict, present_letters_dict, all_absent_letters_set):
+def remove_garbage_words(words_list, correct_letters_dict, present_letters_dict, absent_letters_dict):
     # Removes words that contains absent letters or does not contain present/correct letters
-    
-    # removes all words that contains the absent letters
-    words_list = [word for word in words_list if all(letter not in word for letter in all_absent_letters_set)]
+    print(absent_letters_dict)
+
+    # remove all words that contain the absent letter for that specific position
+    words_list1 = []
+
+    for word in words_list:
+        add = True
+        for index in absent_letters_dict:
+            # removes words with absent letter in specific spot. accounts for words like 'moose', 'goose', etc so if 'o' was correct in 2nd pos but not correct in 3rd
+            if absent_letters_dict[index] == word[index]:
+                add = False
+
+            # remove letters from absent_letters_dict that are correct or present, so the next if statement doesnt remove a word like 'solve' when 'moose' was incorrect with 'o' in 3rd pos
+            absent_letters_dict2 = {key:val for key, val in absent_letters_dict.items() if val not in all_correct_letters_set and val not in all_present_letters_set}
+
+            # if absent letter is in the word 
+            try:
+                if absent_letters_dict2[index] in word:
+                    add = False
+            except KeyError:
+                pass # when there arent anymore keys in dict or key doesnt exist anymore b/c it was removed above
+
+        if add:
+            words_list1.append(word)
+
 
     # removes all words that does not contain correct letters
-    words_list = [word for word in words_list if all(correct_letters_dict[index] in word for index in correct_letters_dict)]
+    words_list = [word for word in words_list1 if all(correct_letters_dict[index] in word for index in correct_letters_dict)]
 
     # removes all words that does not contain present letters
     words_list = [word for word in words_list if all(present_letters_dict[index] in word for index in present_letters_dict)]
@@ -155,17 +175,20 @@ def remove_garbage_words(words_list, correct_letters_dict, present_letters_dict,
 def filter_correct_position(filtered_words_list, correct_letters_dict, word_dict):
     # Returns only words that has the correct letters in right positions
 
-    potential_words_set = set()
-    for word_dict in filtered_words_list:
-        
-        for index in correct_letters_dict:
-
-            if word_dict[index] == correct_letters_dict[index]:
-                potential_words_set.add(word_dict)
-
     # case where didnt have any correctly picked letters, return original 
     if len(correct_letters_dict) == 0:
         return filtered_words_list
+
+    potential_words_set = set()
+    for word in filtered_words_list:
+        add = True
+        for index in correct_letters_dict:
+            
+            if correct_letters_dict[index] != word[index]:
+                add = False
+        
+        if add:
+            potential_words_set.add(word)
 
     return potential_words_set
 
@@ -237,7 +260,7 @@ def pick_word(narrowed_words_set):
 
 
 def main():
-
+    time.sleep(1)
     driver.get(url)
     words_list = get_words(filename)
     status = False
@@ -247,7 +270,7 @@ def main():
 
     # Wait until game board is loaded
     try:
-        WebDriverWait(driver, 10).until(
+        WebDriverWait(driver, 5).until(
             EC.presence_of_element_located((By.CSS_SELECTOR, "body > game-app"))
         )
     except TimeoutException:
@@ -266,25 +289,25 @@ def main():
     # close instructions modal on initial load
     driver.execute_script(" document.querySelector('game-app').shadowRoot.querySelector('div#game > game-modal').shadowRoot.querySelector('div.content > div.close-icon').click() ")
 
-    while attempt != 6:
+    while attempt != 7:
 
         print(f"========================= Attempt {attempt} =========================")
 
-        time.sleep(1.5)
+        time.sleep(1)
 
         type_word(word_dict)
 
         time.sleep(1)
 
         # Get tile status evaluation for current row attempt
-        correct_letters_dict, present_letters_dict, all_absent_letters_set = get_tile_status(attempt)
+        correct_letters_dict, present_letters_dict, absent_letters_dict = get_tile_status(attempt)
 
         # Terminate loop if answer has been found
         if len(correct_letters_dict) == 5:
             status = True
             break
 
-        filtered_words_list = remove_garbage_words(words_list, correct_letters_dict, present_letters_dict, all_absent_letters_set)
+        filtered_words_list = remove_garbage_words(words_list, correct_letters_dict, present_letters_dict, absent_letters_dict)
 
         potential_words_set = filter_correct_position(filtered_words_list, correct_letters_dict, word_dict)
         print(f"remaining potential words ({len(potential_words_set)}):", potential_words_set)
