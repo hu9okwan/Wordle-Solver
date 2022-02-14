@@ -21,9 +21,9 @@ This will eliminate a large number of words from the pool when a letter is evalu
 ### Variables
 At the top of the python file, you can change the following variables:
 
-- ``` first_word = "<enter desired word>" ``` First word that the script guesses with. The default word is set to "audio". 
+- ``` first_word = "<enter desired word>" ``` First word that the script guesses with.
 
-- ``` open_with_chrome_profile = <True/False> ``` If set to True, it will open the Chrome browser with your default profile. Note that all Chrome instances will have to be closed if set to True.
+- ``` open_with_chrome_profile = <True/False> ``` If set to True, it will open the Chrome browser with your default profile. Note that all Chrome instances will have to be closed if this option is used.
 If False, it will open it in an anonymous webdriver profile.
 
 
