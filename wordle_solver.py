@@ -135,13 +135,14 @@ def remove_garbage_words(words_list, correct_letters_dict, present_letters_dict,
     # Removes words that contains absent letters or does not contain present/correct letters
     print(absent_letters_dict)
 
-    # remove all words that contain the absent letter for that specific position
-    words_list1 = []
+    potential_words = []
 
     for word in words_list:
         add = True
+
         for index in absent_letters_dict:
-            # removes words with absent letter in specific spot. accounts for words like 'moose', 'goose', etc so if 'o' was correct in 2nd pos but not correct in 3rd
+
+            # removes words with absent letter in specific pos. accounts for words like 'moose', 'goose', etc so if 'o' was correct in 2nd pos but not correct in 3rd
             if absent_letters_dict[index] == word[index]:
                 add = False
 
@@ -155,42 +156,35 @@ def remove_garbage_words(words_list, correct_letters_dict, present_letters_dict,
             except KeyError:
                 pass # when there arent anymore keys in dict or key doesnt exist anymore b/c it was removed above
 
-        if add:
-            words_list1.append(word)
 
-
-    # removes all words that does not contain correct letters
-    words_list = [word for word in words_list1 if all(correct_letters_dict[index] in word for index in correct_letters_dict)]
-
-    # removes all words that does not contain present letters
-    words_list = [word for word in words_list if all(present_letters_dict[index] in word for index in present_letters_dict)]
-
-    # removes all words that contains present letter in the tested spot that didnt work
-    words_list = [word for word in words_list if all(present_letters_dict[index] != word[index] for index in present_letters_dict)]
-
-    # print(f"word list after garbage removal {len(words_list)}:", words_list)
-    return words_list
-
-
-def filter_correct_position(filtered_words_list, correct_letters_dict, word_dict):
-    # Returns only words that has the correct letters in right positions
-
-    # case where didnt have any correctly picked letters, return original 
-    if len(correct_letters_dict) == 0:
-        return filtered_words_list
-
-    potential_words_set = set()
-    for word in filtered_words_list:
-        add = True
         for index in correct_letters_dict:
-            
+
+            # removes all words that do not contain correct letters
+            if correct_letters_dict[index] not in word:
+                add = False
+
+            # removes all words that has the correct letters in the wrong positions
             if correct_letters_dict[index] != word[index]:
                 add = False
-        
-        if add:
-            potential_words_set.add(word)
 
-    return potential_words_set
+
+        for index in present_letters_dict:
+
+            # removes all words that do not contain present letters
+            if present_letters_dict[index] not in word:
+                add = False
+
+            # removes all words that contains present letter in the tested spot that didnt work
+            if present_letters_dict[index] == word[index]:
+                add = False
+            
+
+        if add:
+            potential_words.append(word)
+
+
+    return potential_words
+
 
 
 def get_most_freq_letter(potential_words_set, present_letters_dict, most_common_letters_set):
@@ -307,21 +301,19 @@ def main():
             status = True
             break
 
-        filtered_words_list = remove_garbage_words(words_list, correct_letters_dict, present_letters_dict, absent_letters_dict)
-
-        potential_words_set = filter_correct_position(filtered_words_list, correct_letters_dict, word_dict)
-        print(f"remaining potential words ({len(potential_words_set)}):", potential_words_set)
+        potential_words_list = remove_garbage_words(words_list, correct_letters_dict, present_letters_dict, absent_letters_dict)
+        print(f"remaining potential words ({len(potential_words_list)}):", potential_words_list)
         print()
 
         print(f"Calculating next best word to guess...")
-        narrowed_words_set = narrow_potential_words(potential_words_set, present_letters_dict)
+        narrowed_words_set = narrow_potential_words(potential_words_list, present_letters_dict)
         print()
 
         suggested_word = pick_word(narrowed_words_set)
         suggested_word = map_str_to_dict(suggested_word)
 
         
-        words_list = potential_words_set
+        words_list = potential_words_list
         word_dict = suggested_word
         attempt += 1 
 
