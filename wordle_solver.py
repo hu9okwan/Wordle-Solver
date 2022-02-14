@@ -133,7 +133,6 @@ def get_tile_status(attempt):
 
 def remove_garbage_words(words_list, correct_letters_dict, present_letters_dict, absent_letters_dict):
     # Removes words that contains absent letters or does not contain present/correct letters
-    print(absent_letters_dict)
 
     potential_words = []
 
