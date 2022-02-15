@@ -5,7 +5,7 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import NoSuchElementException, TimeoutException
+from selenium.common.exceptions import TimeoutException
 
 import time, random
 import collections 
@@ -15,7 +15,7 @@ import os, sys
 
 ##################################################################### Variables
 
-first_word = "audio"
+first_word = "crate"
 filename = "words.txt"
 url = "https://www.nytimes.com/games/wordle/index.html"
 
@@ -24,7 +24,7 @@ open_with_chrome_profile = False
 
 
 # keeps track of letters; DONT CHANGE THESE!!
-all_correct_letters_set = set()
+all_correct_letters_list = []
 all_present_letters_set = set()
 all_absent_letters_set = set()
 
@@ -114,7 +114,7 @@ def get_tile_status(attempt):
 
         if evaluation == "correct":
             correct_letters_dict[index] = letter
-            all_correct_letters_set.add(letter)
+            all_correct_letters_list.append(letter)
         elif evaluation == "present":
             present_letters_dict[index] = letter
             all_present_letters_set.add(letter)
@@ -145,8 +145,15 @@ def remove_garbage_words(words_list, correct_letters_dict, present_letters_dict,
             if absent_letters_dict[index] == word[index]:
                 add = False
 
+            # edge case: if letter is in the correct list, and the letter is absent a subsequent time, then remove the words that has the letter that isnt in the correct pos
+            # remove all words that have the absent letter and only keep the ones that have it in the correct spot
+            if absent_letters_dict[index] in all_correct_letters_list:
+                for i, letter in enumerate(word):
+                    if letter in all_correct_letters_list and i in [k for k,v in correct_letters_dict.items() if v != letter]:
+                        add = False
+
             # remove letters from absent_letters_dict that are correct or present, so the next if statement doesnt remove a word like 'solve' when 'moose' was incorrect with 'o' in 3rd pos
-            absent_letters_dict2 = {key:val for key, val in absent_letters_dict.items() if val not in all_correct_letters_set and val not in all_present_letters_set}
+            absent_letters_dict2 = {key:val for key, val in absent_letters_dict.items() if val not in all_correct_letters_list and val not in all_present_letters_set}
 
             # if absent letter is in the word 
             try:
@@ -186,70 +193,103 @@ def remove_garbage_words(words_list, correct_letters_dict, present_letters_dict,
 
 
 
-def get_most_freq_letter(potential_words_set, present_letters_dict, most_common_letters_set):
-    # Returns most frequent letter out of all potential words that has not been seen before
-
-    most_common_letter = ""
+def get_most_freq_letters(potential_words_set, correct_letters_dict, present_letters_dict, most_common_letters_set):
+    # Returns most frequent letters out of all potential words that is not in present or correct dict
 
     # string that contains all letters + dupes for counting total most occurrences
     all_letters_string = ""
     
     for word in potential_words_set:
-        for letter in word:
-            # dont count present letters occurrences (b/c they will have a 100% occurrence or more)
+        for index, letter in enumerate(word):
+            add = False
+            # dont count present letters occurrences b/c they will have a 100% occurrence or more
             if not (letter in list(present_letters_dict.values()) or letter in most_common_letters_set):
+                try: # dont count correct letter occurences in b/c they all also have 100% occurrence or more
+                    if correct_letters_dict[index] != letter: # count the letter if it isnt a correct letter
+                        add = True 
+                except KeyError:
+                    add = True # add letter if error b/c that means it wasn't in dict
+
+
+            if add:
                 all_letters_string += letter
     
     # Get list of tuples of most common letters and its count. ex: [('r', 44), ('e', 32), ('t', 16),...]
     letters_counter_tuple_list = collections.Counter(all_letters_string).most_common() 
 
     try:
+        # Return if this is the last most common shared letter
         if letters_counter_tuple_list[0][1] == 1:
-            return most_common_letter
+            return letters_counter_tuple_list
 
-        most_common_letter = letters_counter_tuple_list[0][0]
-
+        
         # for debugging
-        # print(letters_counter_tuple_list)
         # print(f"most_common_letters_set: {most_common_letters_set}")
-        # print(f"most_common_letter: {most_common_letter}")
+        # print("letters_counter_tuple_list", letters_counter_tuple_list)
 
     except IndexError:
         # list has been reduced and they all share the same letters with no most common
         pass
 
-    return most_common_letter
+    return letters_counter_tuple_list
 
 
-def narrow_potential_words(potential_words_set, present_letters_dict, most_common_letters_set=set()):
-    # Reduces potential words by picking words that have very common letters
-    # this helps eliminate the a larger set of words if they do not contain that common letter
+def get_best_guess(potential_words_list, letters_counter_tuple_list, correct_letters_dict):
+    # Calculates the next best guess by determining which has the most common letter occurrences among the iteration
+    # does so by finding and returning the string with the highest weight 
+    # the weights are computed in get_most_freq_letters using the remaining letters in the string
 
-    most_common_letter = get_most_freq_letter(potential_words_set, present_letters_dict, most_common_letters_set)
+    if len(potential_words_list) == 1:
+        return potential_words_list[0]
+
+    best_guess = ""
+    highest_value = 0
+
+    for word in potential_words_list:
+        value = 0
+        for tuple in letters_counter_tuple_list:
+            if tuple[0] in word:
+
+                value += (tuple[1])
+        # print("*", word, value)
+
+        if value > highest_value:
+            highest_value = value
+            best_guess = word
+
+    # print(best_guess, highest_value)
+    return best_guess
+    
+
+def narrow_potential_words(potential_words_set, correct_letters_dict, present_letters_dict, most_common_letters_set=set()):
+    # Recursively reduces potential words by picking words that have the most common letter in the current iteration
+    # this helps eliminate a large set of words if they do not contain that common letter
+
+    letters_counter_tuple_list = get_most_freq_letters(potential_words_set, correct_letters_dict, present_letters_dict, most_common_letters_set)
+    most_common_letter = letters_counter_tuple_list[0][0]
     most_common_letters_set.add(most_common_letter)
 
+    # stop if there is no most common letter between the words
     if most_common_letter == "":
-        print("reduced_potential_words_set:", potential_words_set)
+        print(f"reduced_potential_words_set1 ({len(potential_words_set)}):", potential_words_set)
         return potential_words_set
 
     # Remove all words that don't have the most common letter
     reduced_potential_words_set = [word for word in potential_words_set if most_common_letter in word]
 
-
-    # case where there are no present letters selected or no further reduction on potential words can be done
+    # stop when there are no more words remaining or no further reduction on potential words can be done and return previous list that does have content in it
     if len(reduced_potential_words_set) == 0 or len(reduced_potential_words_set) == len(potential_words_set):
-        print("reduced_potential_words_set:", reduced_potential_words_set)
+        print(f"reduced_potential_words_set2({len(potential_words_set)}):", potential_words_set)
         return potential_words_set
 
 
-        
-    return narrow_potential_words(reduced_potential_words_set, present_letters_dict, most_common_letters_set)
+    return narrow_potential_words(reduced_potential_words_set, correct_letters_dict, present_letters_dict, most_common_letters_set)
 
 
 def pick_word(narrowed_words_set):
     # picks a random word from list
-    return random.choice(list(narrowed_words_set))
-
+    selected_word = random.choice(list(narrowed_words_set))
+    return selected_word
 
 
 def main():
@@ -305,15 +345,22 @@ def main():
         print()
 
         print(f"Calculating next best word to guess...")
-        narrowed_words_set = narrow_potential_words(potential_words_list, present_letters_dict)
+
+        # narrowed_words_set = narrow_potential_words(potential_words_list, correct_letters_dict, present_letters_dict)
+
+        # best_guess = pick_word(narrowed_words_set)
+        # best_guess = map_str_to_dict(best_guess)
+
+        letters_counter_tuple_list = get_most_freq_letters(potential_words_list, correct_letters_dict, present_letters_dict, set())
+        best_guess = get_best_guess(potential_words_list, letters_counter_tuple_list, correct_letters_dict)
+
+
+        print(f"Next guess is '{best_guess}'")
         print()
-
-        suggested_word = pick_word(narrowed_words_set)
-        suggested_word = map_str_to_dict(suggested_word)
-
         
+        selected_word = map_str_to_dict(best_guess)
         words_list = potential_words_list
-        word_dict = suggested_word
+        word_dict = selected_word
         attempt += 1 
 
     
