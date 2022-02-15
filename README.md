@@ -3,8 +3,10 @@
  
 This script automatically solves [Wordle](https://www.nytimes.com/games/wordle/index.html) puzzles usually within 3 or 4 attempts, depending on the first word given.
 
-The method I used attempts to solve the puzzle by recursively reducing down a set of words that possess the most common letter among that iteration. 
+The first method I tried attempts to solve the puzzle by recursively reducing down a set of words that possess the most common letter among that iteration. 
 This will eliminate a large number of words from the pool when a letter is evaluated, in which a word is then randomly picked from the narrowed set.
+
+The current method it is using now is similar, although it picks a word by calculating the weight using the remaining letters in the string that have not been either present or correct. Doing so will guarantee that the word that contains the most common letters among that iteration is selected, such that the most information can be acquired to narrow down the remaining words even further.
 
 ![](demo.gif)
 
