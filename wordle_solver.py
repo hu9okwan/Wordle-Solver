@@ -193,7 +193,7 @@ def remove_garbage_words(words_list, correct_letters_dict, present_letters_dict,
 
 
 
-def get_most_freq_letters(potential_words_set, correct_letters_dict, present_letters_dict, most_common_letters_set):
+def get_most_freq_letters(potential_words_set, correct_letters_dict, present_letters_dict, most_common_letters_set=set()):
     # Returns most frequent letters out of all potential words that is not in present or correct dict
 
     # string that contains all letters + dupes for counting total most occurrences
@@ -234,31 +234,38 @@ def get_most_freq_letters(potential_words_set, correct_letters_dict, present_let
     return letters_counter_tuple_list
 
 
-def get_best_guess(potential_words_list, letters_counter_tuple_list, correct_letters_dict):
+def get_best_guesses(potential_words_list, letters_counter_tuple_list):
     # Calculates the next best guess by determining which has the most common letter occurrences among the iteration
     # does so by finding and returning the string with the highest weight 
     # the weights are computed in get_most_freq_letters using the remaining letters in the string
 
     if len(potential_words_list) == 1:
-        return potential_words_list[0]
+        return potential_words_list
 
-    best_guess = ""
+    weighted_words_dict = {}
     highest_value = 0
 
     for word in potential_words_list:
         value = 0
         for tuple in letters_counter_tuple_list:
-            if tuple[0] in word:
+            if tuple[0] in word and tuple[0] not in all_correct_letters_list:
 
-                value += (tuple[1])
-        # print("*", word, value)
+                value += (tuple[1]/len(letters_counter_tuple_list))
+        print("*", word, value)
 
         if value > highest_value:
             highest_value = value
-            best_guess = word
+            
+        weighted_words_dict[word] = value
+        
+    highest_value_words = [key for key, val in weighted_words_dict.items() if val == highest_value]
+    
+    highest_value_words_reduced = [word for word in highest_value_words if len(set(word)) == len(word)]
+    if highest_value_words_reduced:
+        return highest_value_words_reduced
 
     # print(best_guess, highest_value)
-    return best_guess
+    return highest_value_words
     
 
 def narrow_potential_words(potential_words_set, correct_letters_dict, present_letters_dict, most_common_letters_set=set()):
@@ -286,9 +293,9 @@ def narrow_potential_words(potential_words_set, correct_letters_dict, present_le
     return narrow_potential_words(reduced_potential_words_set, correct_letters_dict, present_letters_dict, most_common_letters_set)
 
 
-def pick_word(narrowed_words_set):
+def pick_word(words_list):
     # picks a random word from list
-    selected_word = random.choice(list(narrowed_words_set))
+    selected_word = random.choice(words_list)
     return selected_word
 
 
@@ -346,14 +353,14 @@ def main():
 
         print(f"Calculating next best word to guess...")
 
+        # # Method 1
         # narrowed_words_set = narrow_potential_words(potential_words_list, correct_letters_dict, present_letters_dict)
 
-        # best_guess = pick_word(narrowed_words_set)
-        # best_guess = map_str_to_dict(best_guess)
+        # Method 2
+        letters_counter_tuple_list = get_most_freq_letters(potential_words_list, correct_letters_dict, present_letters_dict)
+        highest_value_words_list = get_best_guesses(potential_words_list, letters_counter_tuple_list)
 
-        letters_counter_tuple_list = get_most_freq_letters(potential_words_list, correct_letters_dict, present_letters_dict, set())
-        best_guess = get_best_guess(potential_words_list, letters_counter_tuple_list, correct_letters_dict)
-
+        best_guess = pick_word(highest_value_words_list)
 
         print(f"Next guess is '{best_guess}'")
         print()
